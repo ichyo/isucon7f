@@ -350,7 +350,18 @@ func str2big(s string) *big.Int {
 	return x
 }
 
+var big2expCache = map[uint64]Exponential{}
+var bigPrime = big.NewInt(0).SetUint64(uint64(18446744073709551557))
+
 func big2exp(n *big.Int) Exponential {
+	var mod big.Int
+	mod.Mod(n, bigPrime)
+	mod64 := mod.Uint64()
+
+	if v, ok := big2expCache[mod64]; ok {
+		return v
+	}
+
 	s := n.String()
 
 	if len(s) <= 15 {
@@ -361,7 +372,10 @@ func big2exp(n *big.Int) Exponential {
 	if err != nil {
 		log.Panic(err)
 	}
-	return Exponential{t, int64(len(s) - 15)}
+
+	big2expCache[mod64] = Exponential{t, int64(len(s) - 15)}
+
+	return big2expCache[mod64]
 }
 
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
