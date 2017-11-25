@@ -189,15 +189,15 @@ func big2exp(n *big.Int) Exponential {
 	}
 
 	// n == x * 2**(t+1)
-	e15 := int64(1000000000000000)
-	e18 := int64(1000000000000000000)
-	x := int64(0)
-	y := int64(0)
+	e15 := uint64(1000000000000000)
+	e19 := uint64(1<<63)
+	x := uint64(0)
+	y := uint64(0)
 	t := len(bits) * 64 - 1
 
 	for t >= 0 {
-		y := x + x + ((int64(bits[t/64]) >> uint(t&63)) & 1)
-		if y < e18 {
+		y := x + x + ((uint64(bits[t/64]) >> uint(t&63)) & 1)
+		if y < e19 {
 			x = y
 			t--
 		} else {
@@ -208,29 +208,27 @@ func big2exp(n *big.Int) Exponential {
 	for t >= 0 {
 		x += x
 		t--
-		if x >= e18 {
+		if x >= e19 {
 			x /= 10
 			y++
 		}
 	}
+
+
+	cnt := 0
 	for x >= e15 {
+		if x % 10 == 9 {
+			cnt++
+		}
 		x /= 10
 		y++
 	}
 
-	return Exponential{x, y}
+	if cnt == 4 {
+		x++
+	}
 
-//	s := n.String()
-//
-//	if len(s) <= 15 {
-//		return Exponential{n.Int64(), 0}
-//	}
-//
-//	t, err := strconv.ParseInt(s[:15], 10, 64)
-//	if err != nil {
-//		log.Panic(err)
-//	}
-//	return Exponential{t, int64(len(s) - 15)}
+	return Exponential{int64(x), int64(y)}
 }
 
 // 部屋のロックを取りタイムスタンプを更新する
