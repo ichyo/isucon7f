@@ -76,7 +76,7 @@ func (c *AddingCache) setAddingAt(roomName string, currentTime int64, addingAt m
 		if k <= currentTime {
 			// 存在しないはず
 		} else {
-			addingAt[k] = Adding{roomName, k, v}
+			addingAt[k] = Adding{roomName, k, v.String(), v}
 		}
 	}
 	log.Println("setAddingAt: ", roomName, currentTime, len(addingAt))
@@ -147,7 +147,8 @@ func (n Exponential) MarshalJSON() ([]byte, error) {
 type Adding struct {
 	RoomName string   `json:"-" db:"room_name"`
 	Time     int64    `json:"time" db:"time"`
-	Isu      *big.Int `json:"isu" db:"isu"`
+	Isu      string   `json:"isu" db:"isu"`
+	IsuVal   *big.Int `json:"-" db"-"`
 }
 
 type Buying struct {
@@ -452,7 +453,7 @@ func calcStatus(roomName string, currentTime int64, mItems map[int]mItem, buying
 		// 時刻 t で発生する adding を計算する
 		if a, ok := addingAt[t]; ok {
 			updated = true
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(a.Isu, big.NewInt(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(a.IsuVal, big.NewInt(1000)))
 		}
 
 		// 時刻 t で発生する buying を計算する
