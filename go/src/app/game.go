@@ -38,7 +38,7 @@ func newAddingCache() *AddingCache {
 	}
 	d.ParseFile()
 	go func() {
-		t := time.NewTicker(1 * time.Second)
+		t := time.NewTicker(2 * time.Second)
 		for {
 			select {
 			case <-t.C:
