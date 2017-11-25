@@ -17,7 +17,7 @@ import (
 var (
 	roomTime = map[string]int64{}
 	timeMux  = &sync.Mutex{}
-	bigFloatPrec = uint(1024)
+	bigFloatPrec = uint(64)
 )
 
 func getCurrentTime() int64 {
