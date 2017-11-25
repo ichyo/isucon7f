@@ -183,7 +183,14 @@ func str2big(s string) *big.Int {
 	return x
 }
 
+var big2expCache = map[*big.Int]Exponential{}
+
 func big2exp(n *big.Int) Exponential {
+
+	if v, ok := big2expCache[n]; ok {
+		return v
+	}
+
 	s := n.String()
 
 	if len(s) <= 15 {
@@ -194,7 +201,10 @@ func big2exp(n *big.Int) Exponential {
 	if err != nil {
 		log.Panic(err)
 	}
-	return Exponential{t, int64(len(s) - 15)}
+
+	big2expCache[n] = Exponential{t, int64(len(s) - 15)}
+
+	return big2expCache[n]
 }
 
 // 部屋のロックを取りタイムスタンプを更新する
