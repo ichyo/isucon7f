@@ -23,6 +23,10 @@ func getCurrentTime() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
+func printError(err error) {
+	log.Println("Error:" + err.Error())
+}
+
 func updateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
 	timeMux.Lock()
 	defer timeMux.Unlock()
@@ -202,21 +206,21 @@ func _oldUpdateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, boo
 	// See page 13 and 17 in https://www.slideshare.net/ichirin2501/insert-51938787
 	_, err := tx.Exec("INSERT INTO room_time(room_name, time) VALUES (?, 0) ON DUPLICATE KEY UPDATE time = time", roomName)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return 0, false
 	}
 
 	var roomTime int64
 	err = tx.Get(&roomTime, "SELECT time FROM room_time WHERE room_name = ? FOR UPDATE", roomName)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return 0, false
 	}
 
 	var currentTime int64
 	err = tx.Get(&currentTime, "SELECT floor(unix_timestamp(current_timestamp(3))*1000)")
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return 0, false
 	}
 	if roomTime > currentTime {
@@ -232,7 +236,7 @@ func _oldUpdateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, boo
 
 	_, err = tx.Exec("UPDATE room_time SET time = ? WHERE room_name = ?", currentTime, roomName)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return 0, false
 	}
 
@@ -242,7 +246,7 @@ func _oldUpdateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, boo
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	tx, err := db.Beginx()
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return false
 	}
 
@@ -254,7 +258,7 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 
 	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, '0') ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		tx.Rollback()
 		return false
 	}
@@ -262,7 +266,7 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	var isuStr string
 	err = tx.QueryRow("SELECT isu FROM adding WHERE room_name = ? AND time = ? FOR UPDATE", roomName, reqTime).Scan(&isuStr)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		tx.Rollback()
 		return false
 	}
@@ -271,13 +275,13 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	isu.Add(isu, reqIsu)
 	_, err = tx.Exec("UPDATE adding SET isu = ? WHERE room_name = ? AND time = ?", isu.String(), roomName, reqTime)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		tx.Rollback()
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		log.Println(err)
+		printError(err)
 		return false
 	}
 	return true
@@ -286,7 +290,7 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	tx, err := db.Beginx()
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return false
 	}
 
@@ -299,7 +303,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	var countBuying int
 	err = tx.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		tx.Rollback()
 		return false
 	}
@@ -313,7 +317,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	var addings []Adding
 	err = tx.Select(&addings, "SELECT isu FROM adding WHERE room_name = ? AND time <= ?", roomName, reqTime)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		tx.Rollback()
 		return false
 	}
@@ -325,7 +329,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	var buyings []Buying
 	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		tx.Rollback()
 		return false
 	}
@@ -349,13 +353,13 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 
 	_, err = tx.Exec("INSERT INTO buying(room_name, item_id, ordinal, time) VALUES(?, ?, ?, ?)", roomName, itemID, countBought+1, reqTime)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		tx.Rollback()
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		log.Println(err)
+		printError(err)
 		return false
 	}
 
@@ -569,13 +573,13 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 
 	status, err := getStatus(roomName)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return
 	}
 
 	err = ws.WriteJSON(status)
 	if err != nil {
-		log.Println(err)
+		printError(err)
 		return
 	}
 
@@ -590,7 +594,7 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 			req := GameRequest{}
 			err := ws.ReadJSON(&req)
 			if err != nil {
-				log.Println(err)
+				printError(err)
 				return
 			}
 
@@ -625,13 +629,13 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 				// GameResponse を返却する前に 反映済みの GameStatus を返す
 				status, err := getStatus(roomName)
 				if err != nil {
-					log.Println(err)
+					printError(err)
 					return
 				}
 
 				err = ws.WriteJSON(status)
 				if err != nil {
-					log.Println(err)
+					printError(err)
 					return
 				}
 			}
@@ -641,19 +645,19 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 				IsSuccess: success,
 			})
 			if err != nil {
-				log.Println(err)
+				printError(err)
 				return
 			}
 		case <-ticker.C:
 			status, err := getStatus(roomName)
 			if err != nil {
-				log.Println(err)
+				printError(err)
 				return
 			}
 
 			err = ws.WriteJSON(status)
 			if err != nil {
-				log.Println(err)
+				printError(err)
 				return
 			}
 		case <-ctx.Done():
