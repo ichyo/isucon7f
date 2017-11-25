@@ -452,6 +452,12 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		},
 	}
 
+	// itemPrice * 1000 を先に計算する
+	var itemPrice1000 = map[int]*big.Int{}
+	for itemID := range mItems {
+		itemPrice1000[itemID] = new(big.Int).Mul(itemPrice[itemID], big.NewInt(1000))
+	}
+
 	// currentTime から 1000 ミリ秒先までシミュレーションする
 	for t := currentTime + 1; t <= currentTime+1000; t++ {
 		totalMilliIsu.Add(totalMilliIsu, totalPower)
@@ -497,7 +503,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 			if _, ok := itemOnSale[itemID]; ok {
 				continue
 			}
-			if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(itemPrice[itemID], big.NewInt(1000))) {
+			if 0 <= totalMilliIsu.Cmp(itemPrice1000[itemID]) {
 				itemOnSale[itemID] = t
 			}
 		}
