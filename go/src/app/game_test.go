@@ -10,7 +10,7 @@ import (
 func TestStatusEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	mItems := map[int]mItem{}
+	mItems := []mItem{}
 	addings := []Adding{}
 	buyings := []Buying{}
 
@@ -30,7 +30,7 @@ func TestStatusEmpty(t *testing.T) {
 func TestStatusAdd(t *testing.T) {
 	assert := assert.New(t)
 
-	mItems := map[int]mItem{}
+	mItems := []mItem{}
 	addings := []Adding{
 		Adding{Time: 100, Isu: "1"},
 		Adding{Time: 200, Isu: "2"},
@@ -77,7 +77,7 @@ func TestStatusBuySingle(t *testing.T) {
 		Power1: 0, Power2: 1, Power3: 0, Power4: 10,
 		Price1: 0, Price2: 1, Price3: 0, Price4: 10,
 	}
-	mItems := map[int]mItem{1: x}
+	mItems := []mItem{x}
 	initialIsu := "10"
 	addings := []Adding{
 		Adding{Time: 0, Isu: initialIsu},
@@ -108,7 +108,7 @@ func TestOnSale(t *testing.T) {
 		Power1: 0, Power2: 1, Power3: 0, Power4: 1, // power: (0x+1)*1^(0x+1)
 		Price1: 0, Price2: 1, Price3: 0, Price4: 1, // price: (0x+1)*1^(0x+1)
 	}
-	mItems := map[int]mItem{1: x}
+	mItems := []mItem{x}
 	addings := []Adding{Adding{Time: 0, Isu: "1"}}
 	buyings := []Buying{Buying{ItemID: 1, Ordinal: 1, Time: 0}}
 
@@ -141,7 +141,7 @@ func TestStatusBuy(t *testing.T) {
 		Power1: 1, Power2: 1, Power3: 7, Power4: 6,
 		Price1: 1, Price2: 1, Price3: 3, Price4: 2,
 	}
-	mItems := map[int]mItem{1: x, 2: y}
+	mItems := []mItem{x, y}
 	initialIsu := "10000000"
 	addings := []Adding{
 		Adding{Time: 0, Isu: initialIsu},
