@@ -20,6 +20,23 @@ var (
 	db *sqlx.DB
 )
 
+var (
+	hostnames = []string{
+		"app0171.isu7f.k0y.org",
+		"app0172.isu7f.k0y.org",
+		"app0173.isu7f.k0y.org",
+	}
+)
+
+func getHostName(roomName string) string {
+	sum := 0
+	for _, c := range roomName {
+		sum += int(c)
+		sum %= 3
+	}
+	return hostnames[sum%3]
+}
+
 func initDB() {
 	db_host := os.Getenv("ISU_DB_HOST")
 	if db_host == "" {
@@ -68,7 +85,8 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	roomName := vars["room_name"]
-	path := "/ws/" + url.PathEscape(roomName)
+	hostName := getHostName(roomName)
+	path := "http://" + hostName + "/ws/" + url.PathEscape(roomName)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
