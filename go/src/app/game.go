@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -150,17 +149,14 @@ func str2big(s string) *big.Int {
 }
 
 func big2exp(n *big.Int) Exponential {
-	s := n.String()
-
-	if len(s) <= 15 {
-		return Exponential{n.Int64(), 0}
+	var e int64 = 0
+	limit := big.NewInt(999999999999999)
+	ten := big.NewInt(10)
+	for n.Cmp(limit) > 0 {
+		e++
+		n.Quo(n, ten)
 	}
-
-	t, err := strconv.ParseInt(s[:15], 10, 64)
-	if err != nil {
-		log.Panic(err)
-	}
-	return Exponential{t, int64(len(s) - 15)}
+	return Exponential{n.Int64(), e}
 }
 
 func getCurrentTime() (int64, error) {
