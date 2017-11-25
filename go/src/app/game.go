@@ -152,11 +152,12 @@ func big2exp(n *big.Int) Exponential {
 	var e int64 = 0
 	limit := big.NewInt(999999999999999)
 	ten := big.NewInt(10)
+	x := n
 	for n.Cmp(limit) > 0 {
 		e++
-		n.Quo(n, ten)
+		x.Quo(x, ten)
 	}
-	return Exponential{n.Int64(), e}
+	return Exponential{x.Int64(), e}
 }
 
 func getCurrentTime() (int64, error) {
