@@ -23,9 +23,9 @@ var (
 
 var (
 	hostnames = []string{
-		"app0171.isu7f.k0y.org:5000",
-		"app0172.isu7f.k0y.org:5000",
-		"app0173.isu7f.k0y.org:5000",
+		"app0171.isu7f.k0y.org",
+		"app0172.isu7f.k0y.org",
+		"app0173.isu7f.k0y.org",
 	}
 )
 
