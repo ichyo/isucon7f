@@ -266,7 +266,7 @@ func big2exp(n *big.Int) Exponential {
 }
 
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
-	return ac.addIsu(roomName, reqIsu, reqTime)
+	return ac.addIsu(roomName, *reqIsu, reqTime)
 }
 
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
@@ -295,7 +295,9 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	totalMilliIsu := ac.getTotal(roomName, reqTime)
+	totalMilliIsu_ := ac.getTotal(roomName, reqTime)
+	totalMilliIsu := new(big.Int)
+	totalMilliIsu.Add(totalMilliIsu, &totalMilliIsu_) // TODO: oh
 
 	var buyings []Buying
 	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
@@ -376,8 +378,8 @@ func getStatus(roomName string) (*GameStatus, error) {
 func calcStatus(roomName string, currentTime int64, mItems map[int]mItem, buyings []Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
-		totalMilliIsu = ac.getTotal(roomName, currentTime)
-		totalPower    = big.NewInt(0)
+		totalMilliIsu_ = ac.getTotal(roomName, currentTime)
+		totalPower     = big.NewInt(0)
 
 		itemPower    = map[int]*big.Int{}    // ItemID => Power
 		itemPrice    = map[int]*big.Int{}    // ItemID => Price
@@ -391,6 +393,8 @@ func calcStatus(roomName string, currentTime int64, mItems map[int]mItem, buying
 		addingAt = map[int64]Adding{}   // Time => currentTime より先の Adding
 		buyingAt = map[int64][]Buying{} // Time => currentTime より先の Buying
 	)
+	totalMilliIsu := new(big.Int)
+	totalMilliIsu.Add(totalMilliIsu, &totalMilliIsu_) // TODO: oh
 
 	for itemID := range mItems {
 		itemPower[itemID] = big.NewInt(0)
