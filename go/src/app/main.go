@@ -86,7 +86,7 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 	roomName := vars["room_name"]
 	hostName := getHostName(roomName)
-	path := "http://" + hostName + "/ws/" + url.PathEscape(roomName)
+	path := "ws://" + hostName + "/ws/" + url.PathEscape(roomName)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
