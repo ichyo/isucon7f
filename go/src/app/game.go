@@ -184,10 +184,11 @@ func str2big(s string) *big.Int {
 }
 
 var big2expCache = map[uint64]Exponential{}
+var bigPrime = big.NewInt(0).SetUint64(uint64(18446744073709551557))
 
 func big2exp(n *big.Int) Exponential {
 	var mod big.Int
-	mod.Mod(n, 18446744073709551557)
+	mod.Mod(n, bigPrime)
 	mod64 := mod.Uint64()
 
 	if v, ok := big2expCache[mod64]; ok {
