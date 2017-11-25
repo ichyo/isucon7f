@@ -101,6 +101,22 @@ type mItem struct {
 	Price4 int64 `db:"price4"`
 }
 
+var mItems = map[int]mItem{
+	1:  {ItemID: 1, Power1: 0, Power2: 1, Power3: 0, Power4: 1, Price1: 0, Price2: 1, Price3: 1, Price4: 1},
+	2:  {ItemID: 2, Power1: 0, Power2: 1, Power3: 1, Power4: 1, Price1: 0, Price2: 1, Price3: 2, Price4: 1},
+	3:  {ItemID: 3, Power1: 1, Power2: 10, Power3: 0, Power4: 2, Price1: 1, Price2: 3, Price3: 1, Price4: 2},
+	4:  {ItemID: 4, Power1: 1, Power2: 24, Power3: 1, Power4: 2, Price1: 1, Price2: 10, Price3: 0, Price4: 3},
+	5:  {ItemID: 5, Power1: 1, Power2: 25, Power3: 100, Power4: 3, Price1: 2, Price2: 20, Price3: 20, Price4: 2},
+	6:  {ItemID: 6, Power1: 1, Power2: 30, Power3: 147, Power4: 13, Price1: 1, Price2: 22, Price3: 69, Price4: 17},
+	7:  {ItemID: 7, Power1: 5, Power2: 80, Power3: 128, Power4: 6, Price1: 6, Price2: 61, Price3: 200, Price4: 5},
+	8:  {ItemID: 8, Power1: 20, Power2: 340, Power3: 180, Power4: 3, Price1: 9, Price2: 105, Price3: 134, Price4: 14},
+	9:  {ItemID: 9, Power1: 55, Power2: 520, Power3: 335, Power4: 5, Price1: 48, Price2: 243, Price3: 600, Price4: 7},
+	10: {ItemID: 10, Power1: 157, Power2: 1071, Power3: 1700, Power4: 12, Price1: 157, Price2: 625, Price3: 1000, Price4: 13},
+	11: {ItemID: 11, Power1: 2000, Power2: 7500, Power3: 2600, Power4: 3, Price1: 2001, Price2: 5430, Price3: 1000, Price4: 3},
+	12: {ItemID: 12, Power1: 1000, Power2: 9000, Power3: 0, Power4: 17, Price1: 963, Price2: 7689, Price3: 1, Price4: 19},
+	13: {ItemID: 13, Power1: 11000, Power2: 11000, Power3: 11000, Power4: 23, Price1: 10000, Price2: 2, Price3: 2, Price4: 29},
+}
+
 func (item *mItem) GetPower(count int) *big.Int {
 	// power(x):=(cx+1)*d^(ax+b)
 	a := item.Power1
@@ -293,8 +309,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 	for _, b := range buyings {
-		var item mItem
-		tx.Get(&item, "SELECT * FROM m_item WHERE item_id = ?", b.ItemID)
+		item := mItems[b.ItemID]
 		cost := new(big.Int).Mul(item.GetPrice(b.Ordinal), big.NewInt(1000))
 		totalMilliIsu.Sub(totalMilliIsu, cost)
 		if b.Time <= reqTime {
@@ -303,8 +318,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		}
 	}
 
-	var item mItem
-	tx.Get(&item, "SELECT * FROM m_item WHERE item_id = ?", itemID)
+	item := mItems[itemID]
 	need := new(big.Int).Mul(item.GetPrice(countBought+1), big.NewInt(1000))
 	if totalMilliIsu.Cmp(need) < 0 {
 		log.Println("not enough")
@@ -337,17 +351,6 @@ func getStatus(roomName string) (*GameStatus, error) {
 	if !ok {
 		tx.Rollback()
 		return nil, fmt.Errorf("updateRoomTime failure")
-	}
-
-	mItems := map[int]mItem{}
-	var items []mItem
-	err = tx.Select(&items, "SELECT * FROM m_item")
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	for _, item := range items {
-		mItems[item.ItemID] = item
 	}
 
 	addings := []Adding{}
