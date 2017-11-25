@@ -33,6 +33,7 @@ func newAddingCache() *AddingCache {
 }
 
 func (c *AddingCache) addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
+	log.Println("addIsu: ", roomName, reqIsu, reqTime)
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if _, ok := c.que[roomName]; !ok {
@@ -46,6 +47,7 @@ func (c *AddingCache) addIsu(roomName string, reqIsu *big.Int, reqTime int64) bo
 }
 
 func (c *AddingCache) getTotal(roomName string, reqTime int64) *big.Int {
+	log.Println("getTotal: ", roomName, reqTime)
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if _, ok := c.total[roomName]; !ok {
@@ -57,12 +59,13 @@ func (c *AddingCache) getTotal(roomName string, reqTime int64) *big.Int {
 	for k, v := range c.que[roomName] {
 		if k <= reqTime {
 			c.total[roomName].Add(c.total[roomName], big.NewInt(0).Mul(v, big.NewInt(1000)))
-			c.que[roomName][k] = nil // TODO: OK?
+			delete(c.que[roomName], k)
 		}
 	}
 	return c.total[roomName]
 }
 func (c *AddingCache) setAddingAt(roomName string, currentTime int64, addingAt map[int64]Adding) {
+	log.Println("setAddingAt: ", roomName, currentTime)
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	for k, v := range c.que[roomName] {
