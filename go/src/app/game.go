@@ -183,11 +183,14 @@ func str2big(s string) *big.Int {
 	return x
 }
 
-var big2expCache = map[*big.Int]Exponential{}
+var big2expCache = map[uint64]Exponential{}
 
 func big2exp(n *big.Int) Exponential {
+	var mod big.Int
+	mod.Mod(n, 18446744073709551557)
+	mod64 := mod.Uint64()
 
-	if v, ok := big2expCache[n]; ok {
+	if v, ok := big2expCache[mod64]; ok {
 		return v
 	}
 
@@ -202,9 +205,9 @@ func big2exp(n *big.Int) Exponential {
 		log.Panic(err)
 	}
 
-	big2expCache[n] = Exponential{t, int64(len(s) - 15)}
+	big2expCache[mod64] = Exponential{t, int64(len(s) - 15)}
 
-	return big2expCache[n]
+	return big2expCache[mod64]
 }
 
 // 部屋のロックを取りタイムスタンプを更新する
