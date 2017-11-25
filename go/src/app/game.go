@@ -108,17 +108,29 @@ func (c *AddingCache) DumpFile() {
 	for name, v := range c.que {
 		for time, val := range v {
 			log.Println(name, strconv.FormatInt(time, 10), val.String())
-			queWriter.Write([]string{name, strconv.FormatInt(time, 10), val.String()})
+			err := queWriter.Write([]string{name, strconv.FormatInt(time, 10), val.String()})
+			if err != nil {
+				log.Println("Error: " + err.Error())
+			}
 		}
 	}
 	queWriter.Flush()
+	if err := queWriter.Error(); err != nil {
+		log.Println("Error: " + err.Error())
+	}
 
 	totalWriter := csv.NewWriter(totalFile)
 	for name, val := range c.total {
 		log.Println(name, val)
-		totalWriter.Write([]string{name, val.String()})
+		err := totalWriter.Write([]string{name, val.String()})
+		if err != nil {
+			log.Println("Error: " + err.Error())
+		}
 	}
 	totalWriter.Flush()
+	if err := totalWriter.Error(); err != nil {
+		log.Println("Error: " + err.Error())
+	}
 }
 
 func (c *AddingCache) addIsu(roomName string, reqIsu big.Int, reqTime int64) bool {
