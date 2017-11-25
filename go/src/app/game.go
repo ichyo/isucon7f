@@ -14,6 +14,58 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type AddingCache struct {
+	que   map[string]map[int64]*big.Int
+	total map[string]*big.Int
+}
+
+var (
+	ac = newAddingCache()
+)
+
+func newAddingCache() *AddingCache {
+	return &AddingCache{
+		make(map[string]map[int64]*big.Int),
+		make(map[string]*big.Int),
+	}
+}
+
+func (c *AddingCache) addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
+	if _, ok := c.que[roomName]; !ok {
+		c.que[roomName] = make(map[int64]*big.Int)
+	}
+	if _, ok := c.que[roomName][reqTime]; !ok {
+		c.que[roomName][reqTime] = big.NewInt(0)
+	}
+	c.que[roomName][reqTime].Add(c.que[roomName][reqTime], reqIsu)
+	return true
+}
+
+func (c *AddingCache) getTotal(roomName string, reqTime int64) *big.Int {
+	if _, ok := c.total[roomName]; !ok {
+		c.total[roomName] = big.NewInt(0)
+	}
+	if _, ok := c.que[roomName]; !ok {
+		c.que[roomName] = make(map[int64]*big.Int)
+	}
+	for k, v := range c.que[roomName] {
+		if k <= reqTime {
+			c.total[roomName].Add(c.total[roomName], big.NewInt(0).Mul(v, big.NewInt(1000)))
+			c.que[roomName][k] = nil // TODO: OK?
+		}
+	}
+	return c.total[roomName]
+}
+func (c *AddingCache) setAddingAt(roomName string, currentTime int64, addingAt map[int64]Adding) {
+	for k, v := range c.que[roomName] {
+		if k <= currentTime {
+			// 存在しないはず
+		} else {
+			addingAt[k] = Adding{roomName, k, v}
+		}
+	}
+}
+
 var (
 	roomTime = map[string]int64{}
 	timeMux  = &sync.Mutex{}
@@ -77,9 +129,9 @@ func (n Exponential) MarshalJSON() ([]byte, error) {
 }
 
 type Adding struct {
-	RoomName string `json:"-" db:"room_name"`
-	Time     int64  `json:"time" db:"time"`
-	Isu      string `json:"isu" db:"isu"`
+	RoomName string   `json:"-" db:"room_name"`
+	Time     int64    `json:"time" db:"time"`
+	Isu      *big.Int `json:"isu" db:"isu"`
 }
 
 type Buying struct {
@@ -197,94 +249,8 @@ func big2exp(n *big.Int) Exponential {
 	return Exponential{t, int64(len(s) - 15)}
 }
 
-// 部屋のロックを取りタイムスタンプを更新する
-//
-// トランザクション開始後この関数を呼ぶ前にクエリを投げると、
-// そのトランザクション中の通常のSELECTクエリが返す結果がロック取得前の
-// 状態になることに注意 (keyword: MVCC, repeatable read).
-func _oldUpdateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
-	// See page 13 and 17 in https://www.slideshare.net/ichirin2501/insert-51938787
-	_, err := tx.Exec("INSERT INTO room_time(room_name, time) VALUES (?, 0) ON DUPLICATE KEY UPDATE time = time", roomName)
-	if err != nil {
-		printError(err)
-		return 0, false
-	}
-
-	var roomTime int64
-	err = tx.Get(&roomTime, "SELECT time FROM room_time WHERE room_name = ? FOR UPDATE", roomName)
-	if err != nil {
-		printError(err)
-		return 0, false
-	}
-
-	var currentTime int64
-	err = tx.Get(&currentTime, "SELECT floor(unix_timestamp(current_timestamp(3))*1000)")
-	if err != nil {
-		printError(err)
-		return 0, false
-	}
-	if roomTime > currentTime {
-		log.Println("room time is future")
-		return 0, false
-	}
-	if reqTime != 0 {
-		if reqTime < currentTime {
-			log.Println("reqTime is past")
-			return 0, false
-		}
-	}
-
-	_, err = tx.Exec("UPDATE room_time SET time = ? WHERE room_name = ?", currentTime, roomName)
-	if err != nil {
-		printError(err)
-		return 0, false
-	}
-
-	return currentTime, true
-}
-
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
-	tx, err := db.Beginx()
-	if err != nil {
-		printError(err)
-		return false
-	}
-
-	_, ok := updateRoomTime(tx, roomName, reqTime)
-	if !ok {
-		log.Println("Warn: updateRoomTime failed")
-		return false
-	}
-
-	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, '0') ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime)
-	if err != nil {
-		printError(err)
-		tx.Rollback()
-		return false
-	}
-
-	var isuStr string
-	err = tx.QueryRow("SELECT isu FROM adding WHERE room_name = ? AND time = ? FOR UPDATE", roomName, reqTime).Scan(&isuStr)
-	if err != nil {
-		printError(err)
-		tx.Rollback()
-		return false
-	}
-	isu := str2big(isuStr)
-
-	isu.Add(isu, reqIsu)
-	_, err = tx.Exec("UPDATE adding SET isu = ? WHERE room_name = ? AND time = ?", isu.String(), roomName, reqTime)
-	if err != nil {
-		printError(err)
-		tx.Rollback()
-		return false
-	}
-
-	if err := tx.Commit(); err != nil {
-		printError(err)
-		return false
-	}
-	return true
+	return ac.addIsu(roomName, reqIsu, reqTime)
 }
 
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
@@ -313,18 +279,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	totalMilliIsu := new(big.Int)
-	var addings []Adding
-	err = tx.Select(&addings, "SELECT isu FROM adding WHERE room_name = ? AND time <= ?", roomName, reqTime)
-	if err != nil {
-		printError(err)
-		tx.Rollback()
-		return false
-	}
-
-	for _, a := range addings {
-		totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
-	}
+	totalMilliIsu := ac.getTotal(roomName, reqTime)
 
 	var buyings []Buying
 	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
@@ -378,13 +333,6 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, fmt.Errorf("updateRoomTime failure")
 	}
 
-	addings := []Adding{}
-	err = tx.Select(&addings, "SELECT time, isu FROM adding WHERE room_name = ?", roomName)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
 	buyings := []Buying{}
 	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
@@ -397,7 +345,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, err
 	}
 
-	status, err := calcStatus(currentTime, mItems, addings, buyings)
+	status, err := calcStatus(roomName, currentTime, mItems, buyings)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +357,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 	return status, err
 }
 
-func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyings []Buying) (*GameStatus, error) {
+func calcStatus(roomName string, currentTime int64, mItems map[int]mItem, buyings []Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
 		totalMilliIsu = big.NewInt(0)
@@ -433,14 +381,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		itemBuilding[itemID] = []Building{}
 	}
 
-	for _, a := range addings {
-		// adding は adding.time に isu を増加させる
-		if a.Time <= currentTime {
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
-		} else {
-			addingAt[a.Time] = a
-		}
-	}
+	ac.setAddingAt(roomName, currentTime, addingAt)
 
 	for _, b := range buyings {
 		// buying は 即座に isu を消費し buying.time からアイテムの効果を発揮する
@@ -491,7 +432,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		// 時刻 t で発生する adding を計算する
 		if a, ok := addingAt[t]; ok {
 			updated = true
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(a.Isu, big.NewInt(1000)))
 		}
 
 		// 時刻 t で発生する buying を計算する
