@@ -36,6 +36,7 @@ func newAddingCache() *AddingCache {
 		make(map[string]*big.Int),
 		&sync.Mutex{},
 	}
+	d.ParseFile()
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for {
@@ -53,6 +54,41 @@ func (c *AddingCache) Clean() {
 	c.total = make(map[string]*big.Int)
 }
 
+func (c *AddingCache) ParseFile(rootDir string) {
+	c.Clean()
+	queFile, err := os.Open("/home/isucon/que.csv")
+	defer queFile.Close()
+	if err == nil {
+		r := csv.NewReader(queFile)
+		records, err := r.ReadAll()
+		if err == nil {
+			for _, r := range records {
+				name := r[0]
+				time, _ := strconv.ParseInt(r[1], 10, 64)
+				val := str2big(r[2])
+				if _, ok := c.que[name]; !ok {
+					c.que[name] = make(map[int64]*big.Int)
+				}
+				c.que[name][time] = val
+			}
+		}
+	}
+
+	totalFile, err := os.Open("/home/isucon/total.csv")
+	defer totalFile.Close()
+	if err == nil {
+		r := csv.NewReader(totalFile)
+		records, err := r.ReadAll()
+		if err == nil {
+			for _, r := range records {
+				name := r[0]
+				val := str2big(r[1])
+				c.total[name] = val
+			}
+		}
+	}
+}
+
 func (c *AddingCache) DumpFile(rootDir string) {
 	queFile, err := os.Open("/home/isucon/que.csv")
 	defer queFile.Close()
@@ -66,16 +102,20 @@ func (c *AddingCache) DumpFile(rootDir string) {
 		log.Println("failed to dump")
 		return
 	}
+
 	queWriter := csv.NewWriter(queFile)
 	for name, v := range c.que {
 		for time, val := range v {
 			queWriter.Write([]string{name, strconv.FormatInt(time, 10), val.String()})
 		}
 	}
+	queWriter.Flush()
+
 	totalWriter := csv.NewWriter(totalFile)
 	for name, val := range c.total {
 		totalWriter.Write([]string{name, val.String()})
 	}
+	totalWriter.Flush()
 }
 
 func (c *AddingCache) addIsu(roomName string, reqIsu big.Int, reqTime int64) bool {
