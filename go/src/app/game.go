@@ -215,16 +215,14 @@ func big2exp(n *big.Int) Exponential {
 	}
 
 
-	cnt := 0
+	rem := uint64(0)
 	for x >= e15 {
-		if x % 10 == 9 {
-			cnt++
-		}
+		rem = rem * 10 + x % 10
 		x /= 10
 		y++
 	}
 
-	if cnt == 4 {
+	if rem >= 9995 {
 		x++
 	}
 
