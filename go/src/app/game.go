@@ -187,7 +187,7 @@ func (item *mItem) GetPowerFloat(count int) *big.Float {
 
 	s := big.NewInt(c*x + 1)
 	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
-	return new(big.Float).SetInt(new(big.Int).Mul(s, t)).SetPrec(bigFloatPrec)
+	return new(big.Float).SetPrec(bigFloatPrec).SetInt(new(big.Int).Mul(s, t))
 }
 
 func (item *mItem) GetPriceFloat(count int) *big.Float {
@@ -200,7 +200,7 @@ func (item *mItem) GetPriceFloat(count int) *big.Float {
 
 	s := big.NewInt(c*x + 1)
 	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
-	return new(big.Float).SetInt(new(big.Int).Mul(s, t)).SetPrec(bigFloatPrec)
+	return new(big.Float).SetPrec(bigFloatPrec).SetInt(new(big.Int).Mul(s, t))
 }
 
 func str2big(s string) *big.Int {
@@ -226,7 +226,7 @@ func big2exp(n *big.Int) Exponential {
 func str2bigFloat(s string) *big.Float {
 	x := new(big.Int)
 	x.SetString(s, 10)
-	return new(big.Float).SetInt(x).SetPrec(bigFloatPrec)
+	return new(big.Float).SetPrec(bigFloatPrec).SetInt(x)
 }
 
 func bigFloat2exp(f *big.Float) Exponential {
