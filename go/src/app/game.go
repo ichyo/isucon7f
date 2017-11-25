@@ -91,13 +91,13 @@ func (c *AddingCache) ParseFile() {
 
 func (c *AddingCache) DumpFile() {
 	log.Println("dumpfile")
-	queFile, err := os.Open("/home/isucon/que.csv")
+	queFile, err := os.Create("/home/isucon/que.csv")
 	defer queFile.Close()
 	if err != nil {
 		log.Println("failed to dump")
 		return
 	}
-	totalFile, err := os.Open("/home/isucon/total.csv")
+	totalFile, err := os.Create("/home/isucon/total.csv")
 	defer totalFile.Close()
 	if err != nil {
 		log.Println("failed to dump")
