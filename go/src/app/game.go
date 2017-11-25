@@ -176,6 +176,31 @@ func (item *mItem) GetPrice(count int) *big.Int {
 	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
 	return new(big.Int).Mul(s, t)
 }
+func (item *mItem) GetPowerFloat(count int) *big.Float {
+	// power(x):=(cx+1)*d^(ax+b)
+	a := item.Power1
+	b := item.Power2
+	c := item.Power3
+	d := item.Power4
+	x := int64(count)
+
+	s := big.NewInt(c*x + 1)
+	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
+	return new(big.Float).SetInt(new(big.Int).Mul(s, t)).SetPrec(64)
+}
+
+func (item *mItem) GetPriceFloat(count int) *big.Float {
+	// price(x):=(cx+1)*d^(ax+b)
+	a := item.Price1
+	b := item.Price2
+	c := item.Price3
+	d := item.Price4
+	x := int64(count)
+
+	s := big.NewInt(c*x + 1)
+	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
+	return new(big.Float).SetInt(new(big.Int).Mul(s, t)).SetPrec(64)
+}
 
 func str2big(s string) *big.Int {
 	x := new(big.Int)
@@ -184,6 +209,29 @@ func str2big(s string) *big.Int {
 }
 
 func big2exp(n *big.Int) Exponential {
+	s := n.String()
+
+	if len(s) <= 15 {
+		return Exponential{n.Int64(), 0}
+	}
+
+	t, err := strconv.ParseInt(s[:15], 10, 64)
+	if err != nil {
+		log.Panic(err)
+	}
+	return Exponential{t, int64(len(s) - 15)}
+}
+
+func str2bigFloat(s string) *big.Float {
+	x := new(big.Int)
+	x.SetString(s, 10)
+	return new(big.Float).SetInt(x).SetPrec(64)
+}
+
+func bigFloat2exp(f *big.Float) Exponential {
+	n := new(big.Int)
+	f.Int(n)
+
 	s := n.String()
 
 	if len(s) <= 15 {
@@ -412,11 +460,11 @@ func getStatus(roomName string) (*GameStatus, error) {
 func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyings []Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
-		totalMilliIsu = big.NewInt(0)
-		totalPower    = big.NewInt(0)
+		totalMilliIsu = big.NewFloat(0)
+		totalPower    = big.NewFloat(0)
 
-		itemPower    = map[int]*big.Int{}    // ItemID => Power
-		itemPrice    = map[int]*big.Int{}    // ItemID => Price
+		itemPower    = map[int]*big.Float{}    // ItemID => Power
+		itemPrice    = map[int]*big.Float{}    // ItemID => Price
 		itemOnSale   = map[int]int64{}       // ItemID => OnSale
 		itemBuilt    = map[int]int{}         // ItemID => BuiltCount
 		itemBought   = map[int]int{}         // ItemID => CountBought
@@ -429,14 +477,14 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 	)
 
 	for itemID := range mItems {
-		itemPower[itemID] = big.NewInt(0)
+		itemPower[itemID] = big.NewFloat(0)
 		itemBuilding[itemID] = []Building{}
 	}
 
 	for _, a := range addings {
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
 		} else {
 			addingAt[a.Time] = a
 		}
@@ -446,12 +494,12 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		// buying は 即座に isu を消費し buying.time からアイテムの効果を発揮する
 		itemBought[b.ItemID]++
 		m := mItems[b.ItemID]
-		totalMilliIsu.Sub(totalMilliIsu, new(big.Int).Mul(m.GetPrice(b.Ordinal), big.NewInt(1000)))
+		totalMilliIsu.Sub(totalMilliIsu, new(big.Float).Mul(m.GetPriceFloat(b.Ordinal), big.NewFloat(1000)))
 
 		if b.Time <= currentTime {
 			itemBuilt[b.ItemID]++
-			power := m.GetPower(itemBought[b.ItemID])
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(power, big.NewInt(currentTime-b.Time)))
+			power := m.GetPowerFloat(itemBought[b.ItemID])
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).Mul(power, new(big.Float).SetInt64(currentTime-b.Time)))
 			totalPower.Add(totalPower, power)
 			itemPower[b.ItemID].Add(itemPower[b.ItemID], power)
 		} else {
@@ -459,12 +507,16 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		}
 	}
 
+	// itemPrice * 1000 を先に計算する
+	var itemPrice1000 = map[int]*big.Float{}
+
 	for _, m := range mItems {
-		itemPower0[m.ItemID] = big2exp(itemPower[m.ItemID])
+		itemPower0[m.ItemID] = bigFloat2exp(itemPower[m.ItemID])
 		itemBuilt0[m.ItemID] = itemBuilt[m.ItemID]
-		price := m.GetPrice(itemBought[m.ItemID] + 1)
+		price := m.GetPriceFloat(itemBought[m.ItemID] + 1)
 		itemPrice[m.ItemID] = price
-		if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(price, big.NewInt(1000))) {
+		itemPrice1000[m.ItemID] = new(big.Float).Mul(itemPrice[m.ItemID], big.NewFloat(1000))
+		if 0 <= totalMilliIsu.Cmp(itemPrice1000[m.ItemID]) {
 			itemOnSale[m.ItemID] = 0 // 0 は 時刻 currentTime で購入可能であることを表す
 		}
 	}
@@ -472,15 +524,9 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 	schedule := []Schedule{
 		Schedule{
 			Time:       currentTime,
-			MilliIsu:   big2exp(totalMilliIsu),
-			TotalPower: big2exp(totalPower),
+			MilliIsu:   bigFloat2exp(totalMilliIsu),
+			TotalPower: bigFloat2exp(totalPower),
 		},
-	}
-
-	// itemPrice * 1000 を先に計算する
-	var itemPrice1000 = map[int]*big.Int{}
-	for itemID := range mItems {
-		itemPrice1000[itemID] = new(big.Int).Mul(itemPrice[itemID], big.NewInt(1000))
 	}
 
 	// currentTime から 1000 ミリ秒先までシミュレーションする
@@ -491,7 +537,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		// 時刻 t で発生する adding を計算する
 		if a, ok := addingAt[t]; ok {
 			updated = true
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
 		}
 
 		// 時刻 t で発生する buying を計算する
@@ -502,7 +548,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 				m := mItems[b.ItemID]
 				updatedID[b.ItemID] = true
 				itemBuilt[b.ItemID]++
-				power := m.GetPower(b.Ordinal)
+				power := m.GetPowerFloat(b.Ordinal)
 				itemPower[b.ItemID].Add(itemPower[b.ItemID], power)
 				totalPower.Add(totalPower, power)
 			}
@@ -510,7 +556,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 				itemBuilding[id] = append(itemBuilding[id], Building{
 					Time:       t,
 					CountBuilt: itemBuilt[id],
-					Power:      big2exp(itemPower[id]),
+					Power:      bigFloat2exp(itemPower[id]),
 				})
 			}
 		}
@@ -518,8 +564,8 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		if updated {
 			schedule = append(schedule, Schedule{
 				Time:       t,
-				MilliIsu:   big2exp(totalMilliIsu),
-				TotalPower: big2exp(totalPower),
+				MilliIsu:   bigFloat2exp(totalMilliIsu),
+				TotalPower: bigFloat2exp(totalPower),
 			})
 		}
 
@@ -545,7 +591,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 			ItemID:      itemID,
 			CountBought: itemBought[itemID],
 			CountBuilt:  itemBuilt0[itemID],
-			NextPrice:   big2exp(itemPrice[itemID]),
+			NextPrice:   bigFloat2exp(itemPrice[itemID]),
 			Power:       itemPower0[itemID],
 			Building:    itemBuilding[itemID],
 		})
