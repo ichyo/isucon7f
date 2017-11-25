@@ -90,7 +90,6 @@ func (c *AddingCache) ParseFile() {
 }
 
 func (c *AddingCache) DumpFile() {
-	log.Println("dumpfile")
 	queFile, err := os.Create("/home/isucon/que.csv")
 	defer queFile.Close()
 	if err != nil {
@@ -107,7 +106,6 @@ func (c *AddingCache) DumpFile() {
 	queWriter := csv.NewWriter(queFile)
 	for name, v := range c.que {
 		for time, val := range v {
-			log.Println(name, strconv.FormatInt(time, 10), val.String())
 			err := queWriter.Write([]string{name, strconv.FormatInt(time, 10), val.String()})
 			if err != nil {
 				log.Println("Error: " + err.Error())
@@ -121,7 +119,6 @@ func (c *AddingCache) DumpFile() {
 
 	totalWriter := csv.NewWriter(totalFile)
 	for name, val := range c.total {
-		log.Println(name, val)
 		err := totalWriter.Write([]string{name, val.String()})
 		if err != nil {
 			log.Println("Error: " + err.Error())
