@@ -230,20 +230,24 @@ func str2bigFloat(s string) *big.Float {
 }
 
 func bigFloat2exp(f *big.Float) Exponential {
-	n := new(big.Int)
-	f.Int(n)
+	// u.[18digits]e+dd
+	s := f.Text('e', 18)
+	u, err := strconv.ParseInt(s[:1], 10, 64)
+	// l, err := strconv.ParseInt(s[2:20], 10, 64)
+	e, err := strconv.ParseInt(s[22:], 10, 64)
 
-	s := n.String()
-
-	if len(s) <= 15 {
-		return Exponential{n.Int64(), 0}
-	}
-
-	t, err := strconv.ParseInt(s[:15], 10, 64)
 	if err != nil {
 		log.Panic(err)
 	}
-	return Exponential{t, int64(len(s) - 15)}
+	
+	i := 2
+	for e > 0 && i < 20 && u < 100000000000000 {
+		z, _ := strconv.ParseInt(s[i:i+1], 10, 64)
+		u = u * 10 + z
+		i++
+		e--
+	}
+	return Exponential{u, e}
 }
 
 // 部屋のロックを取りタイムスタンプを更新する
