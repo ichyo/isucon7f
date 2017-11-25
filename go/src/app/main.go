@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -29,12 +30,9 @@ var (
 )
 
 func getHostName(roomName string) string {
-	sum := 0
-	for _, c := range roomName {
-		sum += int(c)
-		sum %= 3
-	}
-	return hostnames[sum%3]
+	h := fnv.New32a()
+	h.Write([]byte(roomName))
+	return hostnames[h.Sum32()%3]
 }
 
 func initDB() {
