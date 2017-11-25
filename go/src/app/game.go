@@ -152,8 +152,9 @@ func big2exp(n *big.Int) Exponential {
 	var e int64 = 0
 	limit := big.NewInt(999999999999999)
 	ten := big.NewInt(10)
-	x := n
-	for n.Cmp(limit) > 0 {
+	x := big.NewInt(0)
+	x.Set(n)
+	for x.Cmp(limit) > 0 {
 		e++
 		x.Quo(x, ten)
 	}
