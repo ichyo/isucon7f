@@ -103,6 +103,9 @@ func (c *AddingCache) DumpFile() {
 		return
 	}
 
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
 	queWriter := csv.NewWriter(queFile)
 	for name, v := range c.que {
 		for time, val := range v {
