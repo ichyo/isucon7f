@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"strconv"
 	"sync"
 	"time"
 
@@ -184,17 +183,54 @@ func str2big(s string) *big.Int {
 }
 
 func big2exp(n *big.Int) Exponential {
-	s := n.String()
-
-	if len(s) <= 15 {
-		return Exponential{n.Int64(), 0}
+	bits := n.Bits()
+	if bits == nil {
+		return Exponential{ 0, 0 }
 	}
 
-	t, err := strconv.ParseInt(s[:15], 10, 64)
-	if err != nil {
-		log.Panic(err)
+	// n == x * 2**(t+1)
+	e15 := int64(1000000000000000)
+	e18 := int64(1000000000000000000)
+	x := int64(0)
+	y := int64(0)
+	t := len(bits) * 64 - 1
+
+	for t >= 0 {
+		y := x + x + ((int64(bits[t/64]) >> uint(t&63)) & 1)
+		if y < e18 {
+			x = y
+			t--
+		} else {
+			break
+		}
 	}
-	return Exponential{t, int64(len(s) - 15)}
+
+	for t >= 0 {
+		x += x
+		t--
+		if x >= e18 {
+			x /= 10
+			y++
+		}
+	}
+	for x >= e15 {
+		x /= 10
+		y++
+	}
+
+	return Exponential{x, y}
+
+//	s := n.String()
+//
+//	if len(s) <= 15 {
+//		return Exponential{n.Int64(), 0}
+//	}
+//
+//	t, err := strconv.ParseInt(s[:15], 10, 64)
+//	if err != nil {
+//		log.Panic(err)
+//	}
+//	return Exponential{t, int64(len(s) - 15)}
 }
 
 // 部屋のロックを取りタイムスタンプを更新する
