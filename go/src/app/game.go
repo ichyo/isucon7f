@@ -55,11 +55,16 @@ func (c *AddingCache) getTotal(roomName string, reqTime int64) *big.Int {
 	if _, ok := c.que[roomName]; !ok {
 		c.que[roomName] = make(map[int64]*big.Int)
 	}
+	vs := make([]int64, 0, 0)
 	for k, v := range c.que[roomName] {
 		if k <= reqTime {
 			c.total[roomName].Add(c.total[roomName], big.NewInt(0).Mul(v, big.NewInt(1000)))
-			delete(c.que[roomName], k)
+			vs = append(vs, k)
 		}
+	}
+	for _, k := range vs {
+		log.Println("delete ", k)
+		delete(c.que[roomName], k)
 	}
 	log.Println("getTotal: ", roomName, reqTime, c.total[roomName], len(c.que[roomName]))
 	return c.total[roomName]
