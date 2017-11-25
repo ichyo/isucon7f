@@ -252,7 +252,7 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 
 	_, ok := updateRoomTime(tx, roomName, reqTime)
 	if !ok {
-		tx.Rollback()
+		log.Println("Warn: updateRoomTime failed")
 		return false
 	}
 
@@ -296,7 +296,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 
 	_, ok := updateRoomTime(tx, roomName, reqTime)
 	if !ok {
-		tx.Rollback()
+		log.Println("Warn: updateRoomTime failed")
 		return false
 	}
 
