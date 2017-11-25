@@ -17,6 +17,7 @@ import (
 type AddingCache struct {
 	que   map[string]map[int64]*big.Int
 	total map[string]*big.Int
+	mux   *sync.Mutex
 }
 
 var (
@@ -27,10 +28,13 @@ func newAddingCache() *AddingCache {
 	return &AddingCache{
 		make(map[string]map[int64]*big.Int),
 		make(map[string]*big.Int),
+		&sync.Mutex{},
 	}
 }
 
 func (c *AddingCache) addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	if _, ok := c.que[roomName]; !ok {
 		c.que[roomName] = make(map[int64]*big.Int)
 	}
@@ -42,6 +46,8 @@ func (c *AddingCache) addIsu(roomName string, reqIsu *big.Int, reqTime int64) bo
 }
 
 func (c *AddingCache) getTotal(roomName string, reqTime int64) *big.Int {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	if _, ok := c.total[roomName]; !ok {
 		c.total[roomName] = big.NewInt(0)
 	}
@@ -57,6 +63,8 @@ func (c *AddingCache) getTotal(roomName string, reqTime int64) *big.Int {
 	return c.total[roomName]
 }
 func (c *AddingCache) setAddingAt(roomName string, currentTime int64, addingAt map[int64]Adding) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	for k, v := range c.que[roomName] {
 		if k <= currentTime {
 			// 存在しないはず
