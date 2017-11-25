@@ -267,6 +267,12 @@ func big2exp(n *big.Int) Exponential {
 }
 
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
+	_, ok := updateRoomTime(nil, roomName, reqTime)
+	if !ok {
+		log.Println("Warn: updateRoomTime failed")
+		return false
+	}
+
 	return ac.addIsu(roomName, *reqIsu, reqTime)
 }
 
