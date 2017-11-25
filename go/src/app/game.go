@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -19,17 +20,52 @@ type AddingCache struct {
 	total map[string]*big.Int
 	mux   *sync.Mutex
 }
+type DumpCache struct {
+	que   map[string]map[int64]string
+	total map[string]string
+}
 
 var (
 	ac = newAddingCache()
 )
 
 func newAddingCache() *AddingCache {
-	return &AddingCache{
+	d := &AddingCache{
 		make(map[string]map[int64]*big.Int),
 		make(map[string]*big.Int),
 		&sync.Mutex{},
 	}
+	go func() {
+		t := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-t.C:
+				d.DumpFile("/home/isucon/")
+			}
+		}
+	}()
+	return d
+}
+
+func (c *AddingCache) Clean() {
+	c.que = make(map[string]map[int64]*big.Int)
+	c.total = make(map[string]*big.Int)
+}
+
+func (c *AddingCache) DumpFile(rootDir string) {
+	d := DumpCache{}
+	d.que = make(map[string]map[int64]string)
+	d.total = make(map[string]string)
+	for name, v := range c.que {
+		d.que[name] = make(map[int64]string)
+		for time, val := range v {
+			d.que[name][time] = val.String()
+		}
+	}
+	for name, v := range c.total {
+		d.total[name] = v.String()
+	}
+	log.Println(json.Marshal(d))
 }
 
 func (c *AddingCache) addIsu(roomName string, reqIsu big.Int, reqTime int64) bool {
