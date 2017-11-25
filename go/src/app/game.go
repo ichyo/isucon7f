@@ -42,7 +42,7 @@ func newAddingCache() *AddingCache {
 		for {
 			select {
 			case <-t.C:
-				d.DumpFile("/home/isucon/")
+				d.DumpFile()
 			}
 		}
 	}()
@@ -54,7 +54,7 @@ func (c *AddingCache) Clean() {
 	c.total = make(map[string]*big.Int)
 }
 
-func (c *AddingCache) ParseFile(rootDir string) {
+func (c *AddingCache) ParseFile() {
 	c.Clean()
 	queFile, err := os.Open("/home/isucon/que.csv")
 	defer queFile.Close()
@@ -89,7 +89,7 @@ func (c *AddingCache) ParseFile(rootDir string) {
 	}
 }
 
-func (c *AddingCache) DumpFile(rootDir string) {
+func (c *AddingCache) DumpFile() {
 	queFile, err := os.Open("/home/isucon/que.csv")
 	defer queFile.Close()
 	if err != nil {
