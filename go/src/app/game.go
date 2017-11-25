@@ -360,7 +360,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 func calcStatus(roomName string, currentTime int64, mItems map[int]mItem, buyings []Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
-		totalMilliIsu = big.NewInt(0)
+		totalMilliIsu = ac.getTotal(roomName, currentTime)
 		totalPower    = big.NewInt(0)
 
 		itemPower    = map[int]*big.Int{}    // ItemID => Power
