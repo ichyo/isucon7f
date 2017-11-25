@@ -485,7 +485,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 	for _, a := range addings {
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {
-			totalMilliIsu.Add(totalMilliIsu, new(big.Float).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
 		} else {
 			addingAt[a.Time] = a
 		}
@@ -495,12 +495,12 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		// buying は 即座に isu を消費し buying.time からアイテムの効果を発揮する
 		itemBought[b.ItemID]++
 		m := mItems[b.ItemID]
-		totalMilliIsu.Sub(totalMilliIsu, new(big.Float).Mul(m.GetPriceFloat(b.Ordinal), big.NewFloat(1000)))
+		totalMilliIsu.Sub(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(m.GetPriceFloat(b.Ordinal), big.NewFloat(1000)))
 
 		if b.Time <= currentTime {
 			itemBuilt[b.ItemID]++
 			power := m.GetPowerFloat(itemBought[b.ItemID])
-			totalMilliIsu.Add(totalMilliIsu, new(big.Float).Mul(power, new(big.Float).SetInt64(currentTime-b.Time)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(power, new(big.Float).SetPrec(bigFloatPrec).SetInt64(currentTime-b.Time)))
 			totalPower.Add(totalPower, power)
 			itemPower[b.ItemID].Add(itemPower[b.ItemID], power)
 		} else {
@@ -516,7 +516,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		itemBuilt0[m.ItemID] = itemBuilt[m.ItemID]
 		price := m.GetPriceFloat(itemBought[m.ItemID] + 1)
 		itemPrice[m.ItemID] = price
-		itemPrice1000[m.ItemID] = new(big.Float).Mul(itemPrice[m.ItemID], big.NewFloat(1000))
+		itemPrice1000[m.ItemID] = new(big.Float).SetPrec(bigFloatPrec).Mul(itemPrice[m.ItemID], big.NewFloat(1000))
 		if 0 <= totalMilliIsu.Cmp(itemPrice1000[m.ItemID]) {
 			itemOnSale[m.ItemID] = 0 // 0 は 時刻 currentTime で購入可能であることを表す
 		}
@@ -538,7 +538,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		// 時刻 t で発生する adding を計算する
 		if a, ok := addingAt[t]; ok {
 			updated = true
-			totalMilliIsu.Add(totalMilliIsu, new(big.Float).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
 		}
 
 		// 時刻 t で発生する buying を計算する
