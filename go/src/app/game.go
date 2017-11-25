@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
 	"strconv"
@@ -93,13 +92,13 @@ func (c *AddingCache) DumpFile() {
 	queFile, err := os.Create("/home/isucon/que.csv")
 	defer queFile.Close()
 	if err != nil {
-		log.Println("failed to dump")
+		//log.Println("failed to dump")
 		return
 	}
 	totalFile, err := os.Create("/home/isucon/total.csv")
 	defer totalFile.Close()
 	if err != nil {
-		log.Println("failed to dump")
+		//log.Println("failed to dump")
 		return
 	}
 
@@ -108,25 +107,25 @@ func (c *AddingCache) DumpFile() {
 		for time, val := range v {
 			err := queWriter.Write([]string{name, strconv.FormatInt(time, 10), val.String()})
 			if err != nil {
-				log.Println("Error: " + err.Error())
+				//log.Println("Error: " + err.Error())
 			}
 		}
 	}
 	queWriter.Flush()
 	if err := queWriter.Error(); err != nil {
-		log.Println("Error: " + err.Error())
+		//log.Println("Error: " + err.Error())
 	}
 
 	totalWriter := csv.NewWriter(totalFile)
 	for name, val := range c.total {
 		err := totalWriter.Write([]string{name, val.String()})
 		if err != nil {
-			log.Println("Error: " + err.Error())
+			//log.Println("Error: " + err.Error())
 		}
 	}
 	totalWriter.Flush()
 	if err := totalWriter.Error(); err != nil {
-		log.Println("Error: " + err.Error())
+		//log.Println("Error: " + err.Error())
 	}
 }
 
@@ -189,9 +188,9 @@ func getCurrentTime() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
-func printError(err error) {
-	log.Println("Error:" + err.Error())
-}
+//func //printError(err error) {
+//log.Println("Error:" + err.Error())
+//}
 
 func updateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
 	timeMux.Lock()
@@ -199,13 +198,13 @@ func updateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
 	currentTime := getCurrentTime()
 	if rt, ok := roomTime[roomName]; ok {
 		if currentTime < rt {
-			log.Println("room time is future")
+			//log.Println("room time is future")
 			return 0, false
 		}
 	}
 	if reqTime != 0 {
 		if reqTime < currentTime {
-			log.Println("reqTime is past")
+			//log.Println("reqTime is past")
 			return 0, false
 		}
 	}
@@ -359,7 +358,7 @@ func big2exp(n *big.Int) Exponential {
 
 	t, err := strconv.ParseInt(s[:15], 10, 64)
 	if err != nil {
-		log.Panic(err)
+		//log.Panic(err)
 	}
 	return Exponential{t, int64(len(s) - 15)}
 }
@@ -367,7 +366,7 @@ func big2exp(n *big.Int) Exponential {
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	_, ok := updateRoomTime(nil, roomName, reqTime)
 	if !ok {
-		log.Println("Warn: updateRoomTime failed")
+		//log.Println("Warn: updateRoomTime failed")
 		return false
 	}
 
@@ -377,26 +376,26 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	tx, err := db.Beginx()
 	if err != nil {
-		printError(err)
+		//printError(err)
 		return false
 	}
 
 	_, ok := updateRoomTime(tx, roomName, reqTime)
 	if !ok {
-		log.Println("Warn: updateRoomTime failed")
+		//log.Println("Warn: updateRoomTime failed")
 		return false
 	}
 
 	var countBuying int
 	err = tx.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
 	if err != nil {
-		printError(err)
+		//printError(err)
 		tx.Rollback()
 		return false
 	}
 	if countBuying != countBought {
 		tx.Rollback()
-		log.Println(roomName, itemID, countBought+1, " is already bought")
+		//log.Println(roomName, itemID, countBought+1, " is already bought")
 		return false
 	}
 
@@ -407,7 +406,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	var buyings []Buying
 	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
-		printError(err)
+		//printError(err)
 		tx.Rollback()
 		return false
 	}
@@ -424,20 +423,20 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	item := mItems[itemID]
 	need := new(big.Int).Mul(item.GetPrice(countBought+1), big.NewInt(1000))
 	if totalMilliIsu.Cmp(need) < 0 {
-		log.Println("not enough")
+		//log.Println("not enough")
 		tx.Rollback()
 		return false
 	}
 
 	_, err = tx.Exec("INSERT INTO buying(room_name, item_id, ordinal, time) VALUES(?, ?, ?, ?)", roomName, itemID, countBought+1, reqTime)
 	if err != nil {
-		printError(err)
+		//printError(err)
 		tx.Rollback()
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		printError(err)
+		//printError(err)
 		return false
 	}
 
@@ -634,18 +633,18 @@ func calcStatus(roomName string, currentTime int64, mItems map[int]mItem, buying
 }
 
 func serveGameConn(ws *websocket.Conn, roomName string) {
-	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
+	//log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
 
 	status, err := getStatus(roomName)
 	if err != nil {
-		printError(err)
+		//printError(err)
 		return
 	}
 
 	err = ws.WriteJSON(status)
 	if err != nil {
-		printError(err)
+		//printError(err)
 		return
 	}
 
@@ -660,7 +659,7 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 			req := GameRequest{}
 			err := ws.ReadJSON(&req)
 			if err != nil {
-				printError(err)
+				//printError(err)
 				return
 			}
 
@@ -678,7 +677,7 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 	for {
 		select {
 		case req := <-chReq:
-			log.Println(req)
+			//log.Println(req)
 
 			success := false
 			switch req.Action {
@@ -687,7 +686,7 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 			case "buyItem":
 				success = buyItem(roomName, req.ItemID, req.CountBought, req.Time)
 			default:
-				log.Println("Invalid Action")
+				//log.Println("Invalid Action")
 				return
 			}
 
@@ -695,13 +694,13 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 				// GameResponse を返却する前に 反映済みの GameStatus を返す
 				status, err := getStatus(roomName)
 				if err != nil {
-					printError(err)
+					//printError(err)
 					return
 				}
 
 				err = ws.WriteJSON(status)
 				if err != nil {
-					printError(err)
+					//printError(err)
 					return
 				}
 			}
@@ -711,19 +710,19 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 				IsSuccess: success,
 			})
 			if err != nil {
-				printError(err)
+				//printError(err)
 				return
 			}
 		case <-ticker.C:
 			status, err := getStatus(roomName)
 			if err != nil {
-				printError(err)
+				//printError(err)
 				return
 			}
 
 			err = ws.WriteJSON(status)
 			if err != nil {
-				printError(err)
+				//printError(err)
 				return
 			}
 		case <-ctx.Done():
