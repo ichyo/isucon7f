@@ -461,8 +461,8 @@ func getStatus(roomName string) (*GameStatus, error) {
 func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyings []Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
-		totalMilliIsu = big.NewFloat(0)
-		totalPower    = big.NewFloat(0)
+		totalMilliIsu = big.NewFloat(0).SetPrec(bigFloatPrec)
+		totalPower    = big.NewFloat(0).SetPrec(bigFloatPrec)
 
 		itemPower    = map[int]*big.Float{}    // ItemID => Power
 		itemPrice    = map[int]*big.Float{}    // ItemID => Price
@@ -478,14 +478,14 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 	)
 
 	for itemID := range mItems {
-		itemPower[itemID] = big.NewFloat(0)
+		itemPower[itemID] = big.NewFloat(0).SetPrec(bigFloatPrec)
 		itemBuilding[itemID] = []Building{}
 	}
 
 	for _, a := range addings {
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {
-			totalMilliIsu.Add(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(str2bigFloat(a.Isu), big.NewFloat(1000).SetPrec(bigFloatPrec)))
 		} else {
 			addingAt[a.Time] = a
 		}
@@ -495,7 +495,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		// buying は 即座に isu を消費し buying.time からアイテムの効果を発揮する
 		itemBought[b.ItemID]++
 		m := mItems[b.ItemID]
-		totalMilliIsu.Sub(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(m.GetPriceFloat(b.Ordinal), big.NewFloat(1000)))
+		totalMilliIsu.Sub(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(m.GetPriceFloat(b.Ordinal), big.NewFloat(1000).SetPrec(bigFloatPrec)))
 
 		if b.Time <= currentTime {
 			itemBuilt[b.ItemID]++
@@ -516,7 +516,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		itemBuilt0[m.ItemID] = itemBuilt[m.ItemID]
 		price := m.GetPriceFloat(itemBought[m.ItemID] + 1)
 		itemPrice[m.ItemID] = price
-		itemPrice1000[m.ItemID] = new(big.Float).SetPrec(bigFloatPrec).Mul(itemPrice[m.ItemID], big.NewFloat(1000))
+		itemPrice1000[m.ItemID] = new(big.Float).SetPrec(bigFloatPrec).Mul(itemPrice[m.ItemID], big.NewFloat(1000).SetPrec(bigFloatPrec))
 		if 0 <= totalMilliIsu.Cmp(itemPrice1000[m.ItemID]) {
 			itemOnSale[m.ItemID] = 0 // 0 は 時刻 currentTime で購入可能であることを表す
 		}
@@ -538,7 +538,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		// 時刻 t で発生する adding を計算する
 		if a, ok := addingAt[t]; ok {
 			updated = true
-			totalMilliIsu.Add(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(str2bigFloat(a.Isu), big.NewFloat(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Float).SetPrec(bigFloatPrec).Mul(str2bigFloat(a.Isu), big.NewFloat(1000).SetPrec(bigFloatPrec)))
 		}
 
 		// 時刻 t で発生する buying を計算する
