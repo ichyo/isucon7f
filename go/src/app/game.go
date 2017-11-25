@@ -56,10 +56,13 @@ func (c *AddingCache) getTotal(roomName string, reqTime int64) big.Int {
 		c.que[roomName] = make(map[int64]*big.Int)
 	}
 	vs := make([]int64, 0, 0)
+	rest := new(big.Int)
 	for k, v := range c.que[roomName] {
-		if k <= reqTime {
+		if k <= reqTime-1000 {
 			c.total[roomName].Add(c.total[roomName], big.NewInt(0).Mul(v, big.NewInt(1000)))
 			vs = append(vs, k)
+		} else if k <= reqTime {
+			rest.Add(rest, big.NewInt(0).Mul(v, big.NewInt(1000)))
 		}
 	}
 	for _, k := range vs {
@@ -67,7 +70,8 @@ func (c *AddingCache) getTotal(roomName string, reqTime int64) big.Int {
 		delete(c.que[roomName], k)
 	}
 	log.Println("getTotal: ", roomName, reqTime, c.total[roomName], len(c.que[roomName]))
-	return *c.total[roomName]
+	rest.Add(rest, c.total[roomName])
+	return *rest
 }
 func (c *AddingCache) setAddingAt(roomName string, currentTime int64, addingAt map[int64]Adding) {
 	c.mux.Lock()
