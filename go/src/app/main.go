@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -19,6 +20,20 @@ import (
 var (
 	db *sqlx.DB
 )
+
+var (
+	hostnames = []string{
+		"app0171.isu7f.k0y.org",
+		"app0172.isu7f.k0y.org",
+		"app0173.isu7f.k0y.org",
+	}
+)
+
+func getHostName(roomName string) string {
+	h := fnv.New32a()
+	h.Write([]byte(roomName))
+	return hostnames[h.Sum32()%3]
+}
 
 func initDB() {
 	db_host := os.Getenv("ISU_DB_HOST")
@@ -68,6 +83,7 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	roomName := vars["room_name"]
+	hostName := getHostName(roomName)
 	path := "/ws/" + url.PathEscape(roomName)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -75,7 +91,7 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 		Host string `json:"host"`
 		Path string `json:"path"`
 	}{
-		Host: "",
+		Host: hostName,
 		Path: path,
 	})
 }
