@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"time"
@@ -93,6 +94,8 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	go http.ListenAndServe(":3000", nil)
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
 
