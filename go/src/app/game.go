@@ -90,6 +90,7 @@ func (c *AddingCache) ParseFile() {
 }
 
 func (c *AddingCache) DumpFile() {
+	log.Println("dumpfile")
 	queFile, err := os.Open("/home/isucon/que.csv")
 	defer queFile.Close()
 	if err != nil {
@@ -106,6 +107,7 @@ func (c *AddingCache) DumpFile() {
 	queWriter := csv.NewWriter(queFile)
 	for name, v := range c.que {
 		for time, val := range v {
+			log.Println(name, strconv.FormatInt(time, 10), val.String())
 			queWriter.Write([]string{name, strconv.FormatInt(time, 10), val.String()})
 		}
 	}
@@ -113,6 +115,7 @@ func (c *AddingCache) DumpFile() {
 
 	totalWriter := csv.NewWriter(totalFile)
 	for name, val := range c.total {
+		log.Println(name, val)
 		totalWriter.Write([]string{name, val.String()})
 	}
 	totalWriter.Flush()
@@ -128,7 +131,6 @@ func (c *AddingCache) addIsu(roomName string, reqIsu big.Int, reqTime int64) boo
 		c.que[roomName][reqTime] = big.NewInt(0)
 	}
 	c.que[roomName][reqTime].Add(c.que[roomName][reqTime], &reqIsu)
-	log.Println("addIsu: ", roomName, reqIsu, reqTime, len(c.que[roomName]))
 	return true
 }
 
@@ -152,10 +154,8 @@ func (c *AddingCache) getTotal(roomName string, reqTime int64) big.Int {
 		}
 	}
 	for _, k := range vs {
-		log.Println("delete ", k)
 		delete(c.que[roomName], k)
 	}
-	log.Println("getTotal: ", roomName, reqTime, c.total[roomName], len(c.que[roomName]))
 	rest.Add(rest, c.total[roomName])
 	return *rest
 }
@@ -169,7 +169,6 @@ func (c *AddingCache) setAddingAt(roomName string, currentTime int64, addingAt m
 			addingAt[k] = Adding{roomName, k, v.String(), v}
 		}
 	}
-	log.Println("setAddingAt: ", roomName, currentTime, len(addingAt))
 }
 
 var (
