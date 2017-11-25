@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/csv"
 	"fmt"
 	"log"
 	"math/big"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -53,19 +54,28 @@ func (c *AddingCache) Clean() {
 }
 
 func (c *AddingCache) DumpFile(rootDir string) {
-	d := DumpCache{}
-	d.que = make(map[string]map[int64]string)
-	d.total = make(map[string]string)
+	queFile, err := os.Open("/home/isucon/que.csv")
+	defer queFile.Close()
+	if err != nil {
+		log.Println("failed to dump")
+		return
+	}
+	totalFile, err := os.Open("/home/isucon/total.csv")
+	defer totalFile.Close()
+	if err != nil {
+		log.Println("failed to dump")
+		return
+	}
+	queWriter := csv.NewWriter(queFile)
 	for name, v := range c.que {
-		d.que[name] = make(map[int64]string)
 		for time, val := range v {
-			d.que[name][time] = val.String()
+			queWriter.Write([]string{name, strconv.FormatInt(time, 10), val.String()})
 		}
 	}
-	for name, v := range c.total {
-		d.total[name] = v.String()
+	totalWriter := csv.NewWriter(totalFile)
+	for name, val := range c.total {
+		totalWriter.Write([]string{name, val.String()})
 	}
-	log.Println(json.Marshal(d))
 }
 
 func (c *AddingCache) addIsu(roomName string, reqIsu big.Int, reqTime int64) bool {
