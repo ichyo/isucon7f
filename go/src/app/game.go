@@ -38,7 +38,7 @@ func newAddingCache() *AddingCache {
 	}
 	d.ParseFile()
 	go func() {
-		t := time.NewTicker(1 * time.Second)
+		t := time.NewTicker(2 * time.Second)
 		for {
 			select {
 			case <-t.C:
@@ -102,6 +102,9 @@ func (c *AddingCache) DumpFile() {
 		log.Println("failed to dump")
 		return
 	}
+
+	c.mux.Lock()
+	defer c.mux.Unlock()
 
 	queWriter := csv.NewWriter(queFile)
 	for name, v := range c.que {
